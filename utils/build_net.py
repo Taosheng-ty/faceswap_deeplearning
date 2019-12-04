@@ -6,7 +6,9 @@ from torch.optim import lr_scheduler
 from torchvision import models
 import os
 from torchsummary import summary
-
+def initialize_weights(m):
+    if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
+        init.xavier_uniform_(m.weight.data)
 def get_optimizer(model):
     """
     Construct and return an Adam optimizer for the model with learning rate 1e-3,
