@@ -57,7 +57,12 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
     loader_content=data["A"]
     loader_style=data["B"]
     other_Loader=data["C"]
-
+    log_dir=data["ckpt_path"]+"/img/"
+    ckpt_log_dir=data["ckpt_path"]+"/ckpt/"
+    if not os.path.exists(ckpt_log_dir):
+        os.makedirs(ckpt_log_dir)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
     for epoch in range(num_epochs):
         for i, (real_A, real_B,real_C) in enumerate(zip(loader_style, loader_content,other_Loader)):
             nn=nn+1
@@ -293,7 +298,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
         
         
         
-                ckpt="logs/"+folder_name+"/ckpt/"
+                ckpt=ckpt_log_dir+"/"
                 if not os.path.exists(ckpt):
                         os.makedirs(ckpt)
                 torch.save({
@@ -406,7 +411,8 @@ if __name__ == "__main__":
     data["B"]=loader_style
     data["C"]=other_Loader
     folder_name=str(date_a).replace(" ","-")
-    log_dir="logs/"+folder_name+"/img/"
+    log_dir="../../logs/"+folder_name
+    data["ckpt_path"]=log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     import sys
