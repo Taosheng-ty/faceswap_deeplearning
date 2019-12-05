@@ -23,6 +23,10 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from datetime import datetime
 import sys
 sys.path.append("../")
+import sys
+sys.path.append("/home/taoyang/research/Tao_lib/")
+from Tao_lib.log import Logger
+
 from utils import *
 from utils.loss import ls_generator_loss,ls_discriminator_loss
 
@@ -30,6 +34,11 @@ dtype_float=torch.FloatTensor
 # device0 = torch.device("cuda:0")
 # device1 = torch.device("cuda:1")
 # dtype = torch.cuda.HalfTensor
+
+
+
+
+
 
 def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, generator_loss,data={}, show_every=250, 
               batch_size=128, noise_size=96, num_epochs=100):
@@ -57,6 +66,8 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
     loader_content=data["A"]
     loader_style=data["B"]
     other_Loader=data["C"]
+    log_dir=Logger(data["ckpt_path"]+"/")
+    sys.stdout=log_dir
     log_dir=data["ckpt_path"]+"/img/"
     ckpt_log_dir=data["ckpt_path"]+"/ckpt/"
     if not os.path.exists(ckpt_log_dir):
@@ -327,6 +338,7 @@ def cycle_gan():
     D_solver = torch.optim.Adam(itertools.chain(D_B.parameters(), D_A.parameters()),lr=1e-3,betas=[0.5,0.999])
     return G_A,D_A, G_B,D_B,  G_solver, D_solver
 if __name__ == "__main__":
+    
     parse=faceswapping_parser()
     print(parse)
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
