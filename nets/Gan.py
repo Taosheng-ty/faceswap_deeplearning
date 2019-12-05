@@ -6,6 +6,7 @@ import torchvision
 import functools
 import torchvision.transforms as T
 import torch.optim as optim
+from torchsummary import summary
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data import sampler
@@ -29,7 +30,7 @@ from Tao_lib.log import Logger
 
 from utils import *
 from utils.loss import ls_generator_loss,ls_discriminator_loss
-
+from utils.loss import *
 dtype_float=torch.FloatTensor
 # device0 = torch.device("cuda:0")
 # device1 = torch.device("cuda:1")
@@ -53,6 +54,7 @@ def cyclegan_ls_discriminator_loss(**data):
 def cyclegan_generator_loss(**data):
             real_A,real_B,D_A,D_B,G_A,G_B=data["real_A"],data[\
                  "real_B"],data["D_A"],data["D_B"],data["G_A"],data["G_B"]
+            
             reconstructed_A=G_A(real_A)
             reconstructed_B=G_B(real_B)
             reconstructed_A_score=D_A(reconstructed_A)
@@ -60,6 +62,16 @@ def cyclegan_generator_loss(**data):
             cycle_A=G_A(G_B(real_A))
             cycle_B=G_B(G_A(real_A))
             loss_G=ls_generator_loss(reconstructed_A_score)+ls_generator_loss(reconstructed_B_score)+(L1(reconstructed_B,real_B)+L1(reconstructed_A,real_A))*10+5*(L1(cycle_A,real_A)+L1(cycle_B,real_B))
+            if "edge" in data:
+                if data["edge"]:
+                    loss_G+=(edge_loss(reconstructed_A)+edge_loss(reconstructed_B)+\
+                             edge_loss(cycle_A)+edge_loss(cycle_B))*100
+            if "cnn" in data:
+                cnn=data["cnn"]
+                loss_G+=squzze_feature_loss(cnn,real_A,reconstructed_A)
+                loss_G+=squzze_feature_loss(cnn,real_B,reconstructed_B)
+                loss_G+=squzze_feature_loss(cnn,real_B,cycle_B)
+                loss_G+=squzze_feature_loss(cnn,real_A,cycle_A)
             return loss_G
 
 
@@ -88,8 +100,8 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
     loader_content=data["A"]
     loader_style=data["B"]
     other_Loader=data["C"]
-    log_dir=Logger(data["ckpt_path"]+"/")
-    sys.stdout=log_dir
+#     log_dir=Logger(data["ckpt_path"]+"/")
+#     sys.stdout=log_dir
     log_dir=data["ckpt_path"]+"/img/"
     ckpt_log_dir=data["ckpt_path"]+"/ckpt/"
     if not os.path.exists(ckpt_log_dir):
@@ -98,6 +110,9 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
         os.makedirs(log_dir)
     lossG_CPU_=1000
     train_Discriminator_flag=True
+    cnn = torchvision.models.squeezenet1_1(pretrained=True).features
+    cnn=cnn.type(dtype)
+    set_requires_grad(cnn,False)
     for epoch in range(num_epochs):
         for i, (real_A, real_B,real_C) in enumerate(zip(loader_style, loader_content,other_Loader)):
             nn=nn+1
@@ -109,6 +124,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 set_requires_grad(G_B,False)
                 set_requires_grad([D_A,D_B],True)  
                 data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
+
                 loss_D=cyclegan_ls_discriminator_loss(**data)
                 D_solver.zero_grad()
                 loss_D.backward() 
@@ -119,7 +135,8 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
             set_requires_grad([G_A,G_B],True)
             set_requires_grad([D_A,D_B],False) 
             data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
-            
+            data["edge"]=True
+            data["cnn"]=cnn
 
             loss_G=cyclegan_generator_loss(**data)
             G_solver.zero_grad()
@@ -127,7 +144,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
             G_solver.step()
             
             lossG_CPU=loss_G.cpu()
-            if lossG_CPU/lossG_CPU_<0.8:
+            if lossG_CPU/lossG_CPU_<0.99:
                 lossG_CPU_=lossG_CPU
                 train_Discriminator_flag=True
             else:
@@ -269,39 +286,70 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
             },ckpt+str(nn)+".ckpt")
           
 
-def cycle_gan():
-    dtype = torch.cuda.FloatTensor
-    
-    encoder=ResnetEncoder_full(3,3,n_blocks=2,ngf=32)
-    decoder_A=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
-    decoder_B=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
+def cycle_gan(**data):
+    dtype = data["type"]
+    if "full_conv" in data:
+        encoder=ResnetEncoder_total_conv(**data)
+        encoder.type(data["type"])
+        summary(encoder,input_size=(3,data["size"],data["size"]))
+        decoder_A=ResnetDecoder_total_conv(**data)
+        decoder_A.type(data["type"])
+        summary(decoder_A,input_size=(1024,1,1))
+        decoder_B=ResnetDecoder_total_conv(**data)
+        D_A=build_dc_classifier(**data).type(dtype)
+        summary(D_A,input_size=(3,data["size"],data["size"]))
+        
+    else:
+        encoder=ResnetEncoder_full(3,3,n_blocks=2,ngf=32)
+        decoder_A=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
+        decoder_B=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
+        D_A=build_dc_classifier().type(dtype)
     G_A = build_dc_generator(encoder,decoder_A).type(dtype)
     G_B = build_dc_generator(encoder,decoder_B).type(dtype)
     G_A.apply(initialize_weights)
     G_B.apply(initialize_weights)
-    D_A=build_dc_classifier().type(dtype)
+    
     D_A.apply(initialize_weights)
     D_B=build_dc_classifier().type(dtype)
     D_B.apply(initialize_weights)
     G_solver = torch.optim.Adam(itertools.chain(encoder.parameters(), decoder_A.parameters(), decoder_B.parameters()) ,lr=1e-3,betas=[0.5,0.999])
     D_solver = torch.optim.Adam(itertools.chain(D_B.parameters(), D_A.parameters()),lr=1e-3,betas=[0.5,0.999])
     return G_A,D_A, G_B,D_B,  G_solver, D_solver
+
+
+
+
+
 if __name__ == "__main__":
-    
+#     log_dir=Logger(data["ckpt_path"]+"/")
+#     sys.stdout=log_dir
     parse=faceswapping_parser()
     print(parse)
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    G_A,D_A, G_B,D_B,  G_solver, D_solver=cycle_gan()
+    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":6, "padding_type":'reflect',"size":64}
+    data["batch_size"]=2
+    data["type"]=torch.cuda.FloatTensor
+    data["full_conv"]=True
+    date_a = datetime.now() 
+    folder_name=str(date_a).replace(" ","-")
+    log_dir="../../logs/"+folder_name
+    data["ckpt_path"]=log_dir
+    data["ckpt_path"]=log_dir
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    sys.stdout=Logger(log_dir+"/")
+    G_A,D_A, G_B,D_B,  G_solver, D_solver=cycle_gan(**data)
     dtype = torch.cuda.FloatTensor
     plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
     plt.rcParams['image.interpolation'] = 'nearest'
     plt.rcParams['image.cmap'] = 'gray'
+    
     data_transforms = {
     'train': T.Compose([
 #     T.RandomResizedCrop(256),
        T.RandomRotation(10),
     T.RandomHorizontalFlip(),
-       T.Resize((128,128)),
+       T.Resize((data["size"],data["size"])),
 #     T.RandomAffine(10,shear=10),
     T.ColorJitter(0.2,0.2,0.2),
     T.ToTensor(),
@@ -325,7 +373,7 @@ if __name__ == "__main__":
     style=cycle_data_withfolder(photo,data_transforms["train"],dtype)
 
     loader_content = DataLoader(content,
-                        batch_size=4,
+                        batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
     # loader_content = DataLoader(content,
@@ -333,23 +381,24 @@ if __name__ == "__main__":
     #                     num_workers=7,
     #                     shuffle=True)
     other_Loader= DataLoader(other_,
-                        batch_size=4,
+                        batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
     # style=cycle_data('styles/starry_night.jpg',data_transforms["train"])
     loader_style = DataLoader(style,
-                        batch_size=4,
+                        batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
     L1=torch.nn.L1Loss()
-    date_a = datetime.now() 
-    data={}
+
+#     data={}
     
     data["A"]=loader_content
     data["B"]=loader_style
     data["C"]=other_Loader
-    folder_name=str(date_a).replace(" ","-")
-    log_dir="../../logs/"+folder_name
+#     date_a = datetime.now() 
+#     folder_name=str(date_a).replace(" ","-")
+#     log_dir="../../logs/"+folder_name
     data["ckpt_path"]=log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
