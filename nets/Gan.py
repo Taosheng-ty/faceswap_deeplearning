@@ -35,8 +35,32 @@ dtype_float=torch.FloatTensor
 # device1 = torch.device("cuda:1")
 # dtype = torch.cuda.HalfTensor
 
-
-
+def cyclegan_ls_discriminator_loss(**data):
+            real_A,real_B,D_A,D_B,G_A,G_B=data["real_A"],data[\
+                 "real_B"],data["D_A"],data["D_B"],data["G_A"],data["G_B"]
+            reconstructed_A=G_A(real_A)
+            reconstructed_B=G_B(real_B)
+            reconstructed_A_score=D_A(reconstructed_A.detach())
+            reconstructed_B_score=D_B(reconstructed_B.detach()) 
+            real_A_score=D_A(real_A)
+            real_B_score=D_B(real_B)
+            loss_DA=ls_discriminator_loss(real_A_score,reconstructed_A_score)
+            loss_DB=ls_discriminator_loss(real_B_score,reconstructed_B_score)
+            loss_D=(loss_DA+loss_DB)*2
+            return loss_D
+        
+        
+def cyclegan_generator_loss(**data):
+            real_A,real_B,D_A,D_B,G_A,G_B=data["real_A"],data[\
+                 "real_B"],data["D_A"],data["D_B"],data["G_A"],data["G_B"]
+            reconstructed_A=G_A(real_A)
+            reconstructed_B=G_B(real_B)
+            reconstructed_A_score=D_A(reconstructed_A)
+            reconstructed_B_score=D_B(reconstructed_B)  
+            cycle_A=G_A(G_B(real_A))
+            cycle_B=G_B(G_A(real_A))
+            loss_G=ls_generator_loss(reconstructed_A_score)+ls_generator_loss(reconstructed_B_score)+(L1(reconstructed_B,real_B)+L1(reconstructed_A,real_A))*10+5*(L1(cycle_A,real_A)+L1(cycle_B,real_B))
+            return loss_G
 
 
 
@@ -60,9 +84,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
     iter_count = 0
     nn=0
     save_iter=200
-#     loader_style_iter=iter(loader_content)
-    
-        
+#     loader_style_iter=iter(loader_content)       
     loader_content=data["A"]
     loader_style=data["B"]
     other_Loader=data["C"]
@@ -74,85 +96,52 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
         os.makedirs(ckpt_log_dir)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
+    lossG_CPU_=1000
+    train_Discriminator_flag=True
     for epoch in range(num_epochs):
         for i, (real_A, real_B,real_C) in enumerate(zip(loader_style, loader_content,other_Loader)):
             nn=nn+1
-#             print(real_B.size())
-#             print(real_A.size())
             real_A=real_A.type(dtype)
             real_B=real_B.type(dtype)
             real_C=real_C.type(dtype)
-            set_requires_grad(G_A,False)
-            set_requires_grad(G_B,False)
-            set_requires_grad([D_A,D_B],True)
-            real_B=real_B.type(dtype)
-#         logits_real = D(2* (real_data - 0.5)).type(dtype)
-            fake_B=G_A(real_A)
-#             print(fake_B.size(),"b size")
-            fake_A=G_B(real_B)
-            rec_A=G_B(fake_B)
-            rec_B=G_A(fake_A)
-            idt_A=G_B(real_A)
-            idt_B=G_A(real_B)
-            rec_AA=G_A(idt_A)
-            rec_BB=G_B(idt_B)
-            idt_A_Ascore=D_A(idt_A.detach())
-#             rec_A_score=D_A(idt_A.detach())
-            idt_A_Bscore=D_B(idt_A.detach())
-            idt_B_Ascore=D_A(idt_B.detach())
-#             rec_A_score=D_A(idt_A.detach())
-            idt_B_Bscore=D_B(idt_B.detach())
-            real_B_score=D_A(real_B)
-            fake_B_score=D_A(fake_B.detach())
-            real_A_score=D_B(real_A)
-            real_AA_score=D_A(real_A)
-            real_BB_score=D_B(real_B)
-#             print(real_A_score.cpu().size())
-            fake_A_score=D_B(fake_A.detach())
+            if train_Discriminator_flag:
+                set_requires_grad(G_A,False)
+                set_requires_grad(G_B,False)
+                set_requires_grad([D_A,D_B],True)  
+                data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
+                loss_D=cyclegan_ls_discriminator_loss(**data)
+                D_solver.zero_grad()
+                loss_D.backward() 
+                D_solver.step()
             
-#             loss_DA=ls_discriminator_loss(real_B_score,fake_B_score)+ls_discriminator_loss(idt_A_Ascore,idt_A_Bscore)
             
-# #             print("segem")
-#             loss_DB=ls_discriminator_loss(real_A_score,fake_A_score)+ls_discriminator_loss(idt_B_Bscore,idt_B_Ascore)
-#             loss_D=(loss_DA+loss_DB)*2
-
-            loss_DA=ls_discriminator_loss(real_AA_score,fake_B_score)
             
-#             print("segem")
-            loss_DB=ls_discriminator_loss(real_BB_score,fake_A_score)
-            loss_D=(loss_DA+loss_DB)*2
-
-
-
-
-            ##here I should decide what kinds of loss matters and how to calculate the loss.
-
-            D_solver.zero_grad()
-#             DB_solver.zero_grad()
-#             loss_D.backward(retain_graph=True) 
-            loss_D.backward() 
-            D_solver.step()
-#             DB_solver.zero_grad()
-#             DA_solver.step()
             set_requires_grad([G_A,G_B],True)
-            set_requires_grad([D_A,D_B],False)
-            fake_A=G_B(real_B)
-            fake_B=G_A(real_A)
-            idt_A=G_B(real_A)
-            idt_B=G_A(real_B)
-            rec_B=G_A(fake_A)
-            rec_A=G_B(fake_B)
-            fake_B_score=D_A(fake_B)
-            fake_A_score=D_B(fake_A)
-            loss_G=ls_generator_loss(fake_B_score)+ls_generator_loss(fake_A_score)+(L1(fake_B,real_A)+L1(fake_A,real_B))*10+5*(L1(rec_AA,real_A)+L1(rec_BB,real_B))
+            set_requires_grad([D_A,D_B],False) 
+            data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
+            
 
+            loss_G=cyclegan_generator_loss(**data)
             G_solver.zero_grad()
             loss_G.backward()
-
             G_solver.step()
-#             mean_running=loss_D+mean_running
+            
+            lossG_CPU=loss_G.cpu()
+            if lossG_CPU/lossG_CPU_<0.8:
+                lossG_CPU_=lossG_CPU
+                train_Discriminator_flag=True
+            else:
+                train_Discriminator_flag=False
+#             lossD_CPU_=lossD_CPU
             if i%save_iter==0:
-#                 print(real_B_score.cpu(),fake_B_score.cpu())
+                reconstructed_A=G_A(real_A)
+                reconstructed_B=G_B(real_B)
+                generated_B_from_A=G_B(real_A)
+                generated_A_from_B=G_A(real_B)
+                generated_A_from_C=G_A(real_C)
+                generated_B_from_C=G_B(real_C)    
+                cycle_A=G_A(G_B(real_A))
+                cycle_B=G_B(G_A(real_A))
                 print(loss_D.cpu(),"loss of discriminator")
                 print(loss_G.cpu(),"loss of generator")
                 plt.figure()
@@ -168,11 +157,11 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 
                 plt.figure()
 #                 print(real_A.size())
-                imgs = fake_B[0,:,:,:].cpu()
+                imgs = reconstructed_A[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"fake_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"reconstructed_A.png")
 #                 plt.show()
                 plt.close()
                 
@@ -186,18 +175,18 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
 #                 plt.show()
             
                 plt.close()
-                
+  
+
                 plt.figure()
 #                 print(real_A.size())
-                imgs = fake_A[0,:,:,:].cpu()
+                imgs = reconstructed_B[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"fake_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"reconstructed_B.png")
 #                 plt.show()
                 plt.close()
-                G_A_C=G_A(real_C)
-                G_B_C=G_B(real_C)
+    
                 plt.figure()
 #                 print(real_A.size())
 
@@ -211,104 +200,64 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 plt.figure()
 #                 print(real_A.size())
 
-                imgs = G_A_C[0,:,:,:].cpu()
+                imgs =generated_A_from_C[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"G_A_C.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"generated_A_from_C.png")
 #                 plt.show()
                 plt.close()
     
-                imgs = G_B_C[0,:,:,:].cpu()
+                imgs =generated_B_from_C[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"G_B_C.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"generated_B_from_C.png")
 #                 plt.show()
                 plt.close()
-       
-    
-    
-    
-    
-    
-    
+
                 plt.figure()
 #                 print(real_A.size())
-                imgs = idt_A[0,:,:,:].cpu()
+                imgs = generated_B_from_A[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"idt_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"generated_B_from_A.png")
 #                 plt.show()
             
                 plt.close()
     
                 plt.figure()
 #                 print(real_A.size())
-                imgs = idt_B[0,:,:,:].cpu()
+                imgs = generated_A_from_B[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"idt_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"generated_A_from_B.png")
 #                 plt.show()
             
                 plt.close()   
 
                 plt.figure()
 #                 print(real_A.size())
-                imgs = rec_BB[0,:,:,:].cpu()
+                imgs = cycle_A[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"rec_BB.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"cycle_A.png")
 #                 plt.show()
             
                 plt.close()         
                 plt.figure()
 #                 print(real_A.size())
-                imgs = rec_AA[0,:,:,:].cpu()
+                imgs = cycle_B[0,:,:,:].cpu()
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"rec_AA.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"cycle_B.png")
 #                 plt.show()
             
                 plt.close()         
-                
-                plt.figure()
-#                 print(real_A.size())
-                imgs = rec_B[0,:,:,:].cpu()
-                imgs=imgs.type(dtype_float)
-                img_gene=deprocess(imgs)
-                plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"rec_B.png")
-#                 plt.show()
-            
-                plt.close()         
-                plt.figure()
-#                 print(real_A.size())
-                imgs = rec_A[0,:,:,:].cpu()
-                imgs=imgs.type(dtype_float)
-                img_gene=deprocess(imgs)
-                plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"rec_A.png")
-#                 plt.show()
-            
-                plt.close()         
-                        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
                 ckpt=ckpt_log_dir+"/"
                 if not os.path.exists(ckpt):
                         os.makedirs(ckpt)
@@ -349,10 +298,11 @@ if __name__ == "__main__":
     plt.rcParams['image.cmap'] = 'gray'
     data_transforms = {
     'train': T.Compose([
-    # T.RandomResizedCrop(256),
+#     T.RandomResizedCrop(256),
+       T.RandomRotation(10),
     T.RandomHorizontalFlip(),
        T.Resize((128,128)),
-    T.RandomAffine(10,shear=10),
+#     T.RandomAffine(10,shear=10),
     T.ColorJitter(0.2,0.2,0.2),
     T.ToTensor(),
     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -374,30 +324,6 @@ if __name__ == "__main__":
     other_=cycle_data_withfolder(other,data_transforms["train"],dtype)
     style=cycle_data_withfolder(photo,data_transforms["train"],dtype)
 
-    
-
-
-# encoder=build_encoder()
-# decoder_B=build_decoder()
-# decoder_A=build_decoder()
-# G_A = build_dc_generator(encoder,decoder_A).type(dtype)
-# G_A = ResnetGenerator(3,3,n_blocks=2).type(dtype)
-# G_A.apply(initialize_weights)
-# D_A=build_dc_classifier().type(dtype)
-# D_A.apply(initialize_weights)
-
-# # G_B = build_dc_generator(encoder,decoder_B).type(dtype)
-# # G_B =ResnetGenerator(3,3,n_blocks=2).type(dtype)
-# # G_B.apply(initialize_weights)
-# D_B=build_dc_classifier().type(dtype)
-# D_B.apply(initialize_weights)
-# GA_solver, DA_solver,GB_solver,DB_solver=get_optimizer(G_A),get_optimizer(D_A),get_optimizer(G_B),get_optimizer(D_B)
-# itertools.chain(encoder.parameters(), decoder_A.parameters(), decoder_B.parameters())
-# G_solver = torch.optim.Adam(itertools.chain(encoder.parameters(), decoder_A.parameters(), decoder_B.parameters()) ,lr=1e-3,betas=[0.5,0.999])
-# G_solver = torch.optim.Adam(itertools.chain(G_A.parameters(), G_B.parameters()) ,lr=1e-3,betas=[0.5,0.999])
-# D_solver = torch.optim.Adam(itertools.chain(D_B.parameters(), D_A.parameters()),lr=1e-3,betas=[0.5,0.999])
-
-# content=cycle_data('styles/tubingen.jpg',data_transforms["train"])
     loader_content = DataLoader(content,
                         batch_size=4,
                         num_workers=7,
@@ -429,9 +355,6 @@ if __name__ == "__main__":
         os.makedirs(log_dir)
     import sys
     sys.path.append("/home/taoyang/research/Tao_lib/")
-#     from Tao_lib.log import Logger
-#     log=Logger(folder="logs/"+folder_name+"/")
-#     sys.stdout=log
     ls_discriminator_loss=ls_discriminator_loss
     ls_generator_loss=ls_generator_loss
     run_a_cyclegan(G_A,D_A, G_B,D_B,  G_solver, D_solver, ls_discriminator_loss, ls_generator_loss,data=data, num_epochs=50)
