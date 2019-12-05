@@ -23,7 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from datetime import datetime
 import sys
 
-def bce_loss(input1, target,dtype=torch.FloatTensor):
+def bce_loss(input1, target,dtype=torch.cuda.FloatTensor):
     """
     Numerically stable version of the binary cross-entropy loss function.
 
@@ -41,7 +41,7 @@ def bce_loss(input1, target,dtype=torch.FloatTensor):
     neg_abs = - input1.abs()
     loss = input1.clamp(min=0) - input1 * target + (1 + neg_abs.exp()).log()
     return loss.mean()
-def discriminator_loss(logits_real, logits_fake,dtype=torch.FloatTensor):
+def discriminator_loss(logits_real, logits_fake,dtype=torch.cuda.FloatTensor):
     """
     Computes the discriminator loss described above.
     
@@ -61,7 +61,7 @@ def discriminator_loss(logits_real, logits_fake,dtype=torch.FloatTensor):
     loss=real_loss+fake_loss
     return loss
 
-def generator_loss(logits_fake,dtype=torch.FloatTensor):
+def generator_loss(logits_fake,dtype=torch.cuda.FloatTensor):
     """
     Computes the generator loss described above.
 
@@ -77,7 +77,7 @@ def generator_loss(logits_fake,dtype=torch.FloatTensor):
 
     return loss
 
-def ls_discriminator_loss(scores_real, scores_fake,dtype=torch.FloatTensor):
+def ls_discriminator_loss(scores_real, scores_fake,dtype=torch.cuda.FloatTensor):
     """
     Compute the Least-Squares GAN loss for the discriminator.
     
@@ -97,7 +97,7 @@ def ls_discriminator_loss(scores_real, scores_fake,dtype=torch.FloatTensor):
     
     return loss
 
-def ls_generator_loss(scores_fake,dtype=torch.FloatTensor):
+def ls_generator_loss(scores_fake,dtype=torch.cuda.FloatTensor):
     """
     Computes the Least-Squares GAN loss for the generator.
     
