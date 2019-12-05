@@ -6,6 +6,18 @@ from torch.optim import lr_scheduler
 from torchvision import models
 import os
 from torchsummary import summary
+def set_requires_grad( nets, requires_grad=False):
+        """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
+        Parameters:
+            nets (network list)   -- a list of networks
+            requires_grad (bool)  -- whether the networks require gradients or not
+        """
+        if not isinstance(nets, list):
+            nets = [nets]
+        for net in nets:
+            if net is not None:
+                for param in net.parameters():
+                    param.requires_grad = requires_grad
 def initialize_weights(m):
     if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
         init.xavier_uniform_(m.weight.data)
@@ -78,7 +90,7 @@ class Flatten(nn.Module):
     def forward(self, x):
         N, C, H, W = x.size() # read in N, C, H, W
         return x.view(N, -1)  # "flatten" the C * H * W values into a single vector per image
-def build_dc_classifier():
+def build_dc_classifier(data={}):
     """
     Build and return a PyTorch model for the DCGAN discriminator implementing
     the architecture above.
@@ -104,7 +116,7 @@ def build_dc_classifier():
 #         Print_net(),
         Flatten(),
 #         Print_net(),
-        nn.Linear(576,4 *4 *64,True),
+        nn.Linear(64,4 *4 *64,True),
         nn.LeakyReLU(),
         nn.Linear(4 *4 *64,1,True)      
     )
