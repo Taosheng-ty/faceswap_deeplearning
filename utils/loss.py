@@ -113,6 +113,18 @@ def ls_generator_loss(scores_fake,dtype=torch.cuda.FloatTensor):
     loss=0.5*((scores_fake-label_fake)**2).mean()
     
     return loss
+def edge_loss(img):
+    loss=tv_weight*(((img[:,:,0:-1,:]-img[:,:,1:,:])**2).sum()+((img[:,:,:,0:-1]-img[:,:,:,1:])**2).sum())
+    return loss
+def squzze_feature_loss(cnn,real,generated,data={"weights":[.1,1,10]}):
+    set_requires_grad(cnn,False)
+    real_f=extract_features(real,cnn)
+    fake_f=extract_features(generated,cnn)
+    weights=data["weights"]
+    loss=0
+    for i in range(2,-1,-1):
+        loss+=weights[i]*((real_f[i]-fake_f[i])**2).mean()
+    return  loss
 if __name__ == "__main__":
     x=torch.rand((4,5))
     print(x,"x")
