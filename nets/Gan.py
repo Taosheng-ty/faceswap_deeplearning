@@ -63,9 +63,9 @@ def cyclegan_generator_loss(**data):
             cycle_B=G_B(G_A(real_A))
             loss_G=ls_generator_loss(reconstructed_A_score)+ls_generator_loss(reconstructed_B_score)+(L1(reconstructed_B,real_B)+L1(reconstructed_A,real_A))*10+5*(L1(cycle_A,real_A)+L1(cycle_B,real_B))
             if "edge" in data:
-                if data["edge"]:
-                    loss_G+=(edge_loss(reconstructed_A)+edge_loss(reconstructed_B)+\
-                             edge_loss(cycle_A)+edge_loss(cycle_B))*100
+                
+                    loss_G+=data["edge"]*(edge_loss(reconstructed_A)+edge_loss(reconstructed_B)+\
+                             edge_loss(cycle_A)+edge_loss(cycle_B))
             if "cnn" in data:
                 cnn=data["cnn"]
                 loss_G+=squzze_feature_loss(cnn,real_A,reconstructed_A)
@@ -135,7 +135,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
             set_requires_grad([G_A,G_B],True)
             set_requires_grad([D_A,D_B],False) 
             data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
-            data["edge"]=True
+            data["edge"]=5e-5
             data["cnn"]=cnn
 
             loss_G=cyclegan_generator_loss(**data)
@@ -151,6 +151,9 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 train_Discriminator_flag=False
 #             lossD_CPU_=lossD_CPU
             if i%save_iter==0:
+                img_logdir=log_dir+"itration_"+str(nn)
+                if not os.path.exists(img_logdir):
+                    os.makedirs(img_logdir)
                 reconstructed_A=G_A(real_A)
                 reconstructed_B=G_B(real_B)
                 generated_B_from_A=G_B(real_A)
@@ -167,7 +170,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"real_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/real_A.png")
 #                 plt.show()
                 
                 plt.close()
@@ -178,7 +181,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"reconstructed_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/reconstructed_A.png")
 #                 plt.show()
                 plt.close()
                 
@@ -188,7 +191,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"real_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/real_B.png")
 #                 plt.show()
             
                 plt.close()
@@ -200,7 +203,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"reconstructed_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/reconstructed_B.png")
 #                 plt.show()
                 plt.close()
     
@@ -211,7 +214,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"realc.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/realc.png")
 #                 plt.show()
                 plt.close()
                 plt.figure()
@@ -221,7 +224,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"generated_A_from_C.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/generated_A_from_C.png")
 #                 plt.show()
                 plt.close()
     
@@ -229,7 +232,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"generated_B_from_C.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/generated_B_from_C.png")
 #                 plt.show()
                 plt.close()
 
@@ -239,7 +242,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"generated_B_from_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/generated_B_from_A.png")
 #                 plt.show()
             
                 plt.close()
@@ -250,7 +253,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"generated_A_from_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/generated_A_from_B.png")
 #                 plt.show()
             
                 plt.close()   
@@ -261,7 +264,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"cycle_A.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/cycle_A.png")
 #                 plt.show()
             
                 plt.close()         
@@ -271,7 +274,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
                 imgs=imgs.type(dtype_float)
                 img_gene=deprocess(imgs)
                 plt.imshow(img_gene)
-                plt.savefig(log_dir+"itration_"+str(nn)+"cycle_B.png")
+                plt.savefig(log_dir+"itration_"+str(nn)+"/cycle_B.png")
 #                 plt.show()
             
                 plt.close()         
@@ -298,18 +301,33 @@ def cycle_gan(**data):
         decoder_B=ResnetDecoder_total_conv(**data)
         D_A=build_dc_classifier(**data).type(dtype)
         summary(D_A,input_size=(3,data["size"],data["size"]))
-        
+    elif "shaoanlu" in data:
+        encoder=ResnetEncoder_shaoanlu(**data)
+        encoder.type(data["type"])
+        summary(encoder,input_size=(3,data["size"],data["size"]))
+        decoder_A=ResnetDecoder_shaoanlu(**data)
+        decoder_A.type(data["type"])
+
+        decoder_B=ResnetDecoder_shaoanlu(**data)
+        D_A=build_dc_classifier(**data).type(dtype)
+
+                
     else:
-        encoder=ResnetEncoder_full(3,3,n_blocks=2,ngf=32)
-        decoder_A=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
-        decoder_B=ResnetDecoder_full(3,3,n_blocks=2,ngf=32)
+        encoder=ResnetEncoder_full(**data)
+        decoder_A=ResnetDecoder_full(**data)
+        decoder_B=ResnetDecoder_full(**data)
         D_A=build_dc_classifier().type(dtype)
+        
     G_A = build_dc_generator(encoder,decoder_A).type(dtype)
+    print("G_A graph")
+    summary(G_A,input_size=(3,data["size"],data["size"]))
     G_B = build_dc_generator(encoder,decoder_B).type(dtype)
     G_A.apply(initialize_weights)
     G_B.apply(initialize_weights)
     
     D_A.apply(initialize_weights)
+    print("D_A graph")
+    summary(D_A,input_size=(3,data["size"],data["size"]))
     D_B=build_dc_classifier().type(dtype)
     D_B.apply(initialize_weights)
     G_solver = torch.optim.Adam(itertools.chain(encoder.parameters(), decoder_A.parameters(), decoder_B.parameters()) ,lr=1e-3,betas=[0.5,0.999])
@@ -326,10 +344,10 @@ if __name__ == "__main__":
     parse=faceswapping_parser()
     print(parse)
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":6, "padding_type":'reflect',"size":64}
-    data["batch_size"]=2
+    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":2, "padding_type":'reflect',"size":64}
+    data["batch_size"]=4
     data["type"]=torch.cuda.FloatTensor
-    data["full_conv"]=True
+    data["shaoanlu"]=False
     date_a = datetime.now() 
     folder_name=str(date_a).replace(" ","-")
     log_dir="../../logs/"+folder_name
@@ -350,7 +368,7 @@ if __name__ == "__main__":
        T.RandomRotation(10),
     T.RandomHorizontalFlip(),
        T.Resize((data["size"],data["size"])),
-#     T.RandomAffine(10,shear=10),
+    T.RandomAffine(10,shear=10),
     T.ColorJitter(0.2,0.2,0.2),
     T.ToTensor(),
     T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
