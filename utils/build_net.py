@@ -486,7 +486,7 @@ class ResnetEncoder_full(nn.Module):
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type='reflect',input_data={"size":128}):
+    def __init__(self, **data):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -498,6 +498,8 @@ class ResnetEncoder_full(nn.Module):
             n_blocks (int)      -- the number of ResNet blocks
             padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
         """
+        input_nc, output_nc, ngf, norm_layer, use_dropout, n_blocks, padding_type=data["input_nc"],data["output_nc"],\
+        data["ngf"],data["norm_layer"],data["use_dropout"],data["n_blocks"],data["padding_type"]
         assert(n_blocks >= 0)
         super( ResnetEncoder_full, self).__init__()
         if type(norm_layer) == functools.partial:
@@ -509,17 +511,19 @@ class ResnetEncoder_full(nn.Module):
                  nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
                  norm_layer(ngf),
                  nn.ReLU(True)]
-        size=input_data["size"]
-        n_downsampling = 3
+        size=data["size"]
+        n_downsampling = 2
         for i in range(n_downsampling):  # add downsampling layers
             mult = 2 ** i
             model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
                       norm_layer(ngf * mult * 2),
                       nn.ReLU(True)]
+            model += [Self_Attn( ngf * mult * 2)]
 
         mult = 2 ** n_downsampling
         for i in range(n_blocks):       # add ResNet blocks
             model += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
+            model += [Self_Attn(ngf * mult)]
         model+=[nn.Conv2d(ngf * mult, 32, kernel_size=1, padding=0, bias=use_bias)]
         model+=[nn.Flatten()]
         model+=[nn.Linear(size*size//(mult)//(mult)*32,256)]
@@ -544,7 +548,7 @@ class ResnetDecoder_full(nn.Module):
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type='reflect'):
+    def __init__(self, **data):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -556,6 +560,8 @@ class ResnetDecoder_full(nn.Module):
             n_blocks (int)      -- the number of ResNet blocks
             padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
         """
+        input_nc, output_nc, ngf, norm_layer, use_dropout, n_blocks, padding_type=data["input_nc"],data["output_nc"],\
+        data["ngf"],data["norm_layer"],data["use_dropout"],data["n_blocks"],data["padding_type"]
         assert(n_blocks >= 0)
         super(ResnetDecoder_full, self).__init__()
         if type(norm_layer) == functools.partial:
@@ -563,14 +569,14 @@ class ResnetDecoder_full(nn.Module):
         else:
             use_bias = norm_layer == nn.InstanceNorm2d
         model=[]
-        size=128
-        n_downsampling = 3
+        size=data["size"]
+        n_downsampling = 2
         mult = 2 ** n_downsampling
         model+=[nn.Flatten()]
         model+=[nn.Linear(size*size//(mult)//(mult)*ngf,256)]
-        model+=[nn.Linear(256,size*size//(mult)//(mult)*ngf)]
+        model+=[nn.Linear(256,size*size//(mult)//(mult)*32)]
         
-        model+=[Reshape(-1,ngf,size//(mult),size//(mult))]
+        model+=[Reshape(-1,32,size//(mult),size//(mult))]
         model+=[nn.Conv2d( 32, ngf * mult,kernel_size=1, padding=0, bias=use_bias)]
 #         for i in range(n_downsampling):  # add downsampling layers
 #             mult = 2 ** i
@@ -581,17 +587,19 @@ class ResnetDecoder_full(nn.Module):
 #         mult = 2 ** n_downsampling
         
         for i in range(n_blocks):       # add ResNet blocks
-
+            model += [Self_Attn( ngf * mult)]
             model += [ResnetBlock_upsampling(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
-
+            
         for i in range(n_downsampling):  # add upsampling layers
             mult = 2 ** (n_downsampling - i)
+            model += [Self_Attn( int(ngf * mult))]
             model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
                                          kernel_size=3, stride=2,
                                          padding=1, output_padding=1,
                                          bias=use_bias),
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
+            
 #         model += [nn.ReflectionPad2d(3)]
         model += [nn.ConvTranspose2d(ngf, output_nc, kernel_size=7, padding=3)]
         model += [nn.Tanh()]
@@ -760,12 +768,184 @@ class ResnetDecoder_total_conv(nn.Module):
     
     
     
+    
+    
+    
+    
+class ResnetEncoder_shaoanlu(nn.Module):
+    """Resnet-based generator that consists of Resnet blocks between a few downsampling/upsampling operations.
 
+    We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
+    """
 
+    def __init__(self, **data):
+        """Construct a Resnet-based generator
+
+        Parameters:
+            input_nc (int)      -- the number of channels in input images
+            output_nc (int)     -- the number of channels in output images
+            ngf (int)           -- the number of filters in the last conv layer
+            norm_layer          -- normalization layer
+            use_dropout (bool)  -- if use dropout layers
+            n_blocks (int)      -- the number of ResNet blocks
+            padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
+        """
+        input_nc, output_nc, ngf, norm_layer, use_dropout, n_blocks, padding_type=data["input_nc"],data["output_nc"],\
+        data["ngf"],data["norm_layer"],data["use_dropout"],data["n_blocks"],data["padding_type"]
+        latent=256
+        size=128
+        if "size" in data:           
+            size=data["size"]
+        assert(n_blocks >= 0)
+        super(ResnetEncoder_shaoanlu, self).__init__()
+        if type(norm_layer) == functools.partial:
+            use_bias = norm_layer.func == nn.InstanceNorm2d
+        else:
+            use_bias = norm_layer == nn.InstanceNorm2d
+        
+#         model = [nn.ReflectionPad2d(3),
+#                  nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
+#                  norm_layer(ngf),
+#                  nn.ReLU(True)]
+        
+        n_downsampling = 3
+        ngf=64
+        input_=3
+        mult=1
+        activa_map=1
+        model=[]
+        model += [nn.Conv2d(input_, ngf * mult, kernel_size=3, stride=1, padding=1, bias=use_bias),
+                          norm_layer(ngf * mult),
+                          nn.ReLU(True)]        
+
+        for i in range(0,n_downsampling-1):  # add downsampling layers
+            mult = 2 ** i
+            input_=ngf * mult
+            activa_map*=2    
+            model += [nn.Conv2d(input_, ngf * mult*2, kernel_size=3, stride=2, padding=1, bias=use_bias),
+                          norm_layer(ngf * mult*2),
+                          nn.ReLU(True)]
+            
+        while (size/activa_map>4):
+            input_=input_*2
+            model += [Self_Attn(input_,)]
+            activa_map*=2 
+            
+            model += [nn.Conv2d(input_, input_*2, kernel_size=3, stride=2, padding=1, bias=use_bias),
+                          norm_layer(input_*2),
+                          nn.ReLU(True)]   
+        
+        input_=input_*2
+        print(input_)
+        model+=[nn.Flatten()]
+        model+=[nn.Linear(4*4*input_,latent)]
+        model+=[nn.Linear(latent,4*4*1024)]
+        model+=[Reshape(-1,1024,4,4)]
+#         model += [nn.Conv2d(1024, input_*2, kernel_size=3, stride=2, padding=1, bias=use_bias),
+#                       norm_layer(ngf * mult * 2),
+#                       nn.ReLU(True)]         
+        self.model = nn.Sequential(*model)
+        
+    def forward(self, input):
+        """Standard forward"""
+        return self.model(input)
+
+class Reshape(nn.Module):
+    def __init__(self, *args):
+        super(Reshape, self).__init__()
+        self.shape = args
+
+    def forward(self, x):
+        return x.view(self.shape)    
+    
+    
+    
+class ResnetDecoder_shaoanlu(nn.Module):
+    """Resnet-based generator that consists of Resnet blocks between a few downsampling/upsampling operations.
+
+    We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
+    """
+
+    def __init__(self, **data):
+        """Construct a Resnet-based generator
+
+        Parameters:
+            input_nc (int)      -- the number of channels in input images
+            output_nc (int)     -- the number of channels in output images
+            ngf (int)           -- the number of filters in the last conv layer
+            norm_layer          -- normalization layer
+            use_dropout (bool)  -- if use dropout layers
+            n_blocks (int)      -- the number of ResNet blocks
+            padding_type (str)  -- the name of padding layer in conv layers: reflect | replicate | zero
+        """
+        
+        input_nc, output_nc, ngf, norm_layer, use_dropout, n_blocks, padding_type=data["input_nc"],data["output_nc"],\
+        data["ngf"],data["norm_layer"],data["use_dropout"],data["n_blocks"],data["padding_type"]
+        assert(n_blocks >= 0)
+        super(ResnetDecoder_shaoanlu, self).__init__()
+        n_downsampling = 3
+        ngf=64
+        input_=3
+        mult=1
+        activa_map=1
+        model=[]
+        if type(norm_layer) == functools.partial:
+            use_bias = norm_layer.func == nn.InstanceNorm2d
+        else:
+            use_bias = norm_layer == nn.InstanceNorm2d
+        model=[]
+        size=128
+        latent=256
+        if "size" in data:           
+            size=data["size"]
+        n_atten=int(np.log2(size//4))
+        n_upsampling = 3
+        input_=int(ngf*2**n_atten)
+        mult = 2 ** n_upsampling
+        size_current=4
+        model+=[nn.Flatten()]
+        model+=[nn.Linear(4*4*1024,latent)]
+        model+=[nn.Linear(latent,input_*size_current*size_current)]
+        
+        model+=[Reshape(-1,input_,size_current,size_current)]
+        
+        while size_current<=size//mult:
+            model += [nn.ReLU(True),norm_layer(int(input_)),
+                      nn.ConvTranspose2d(input_, int(input_ / 2),
+                                         kernel_size=3, stride=2,
+                                         padding=1, output_padding=1,
+                                         bias=use_bias),Self_Attn(int(input_ / 2))] 
+            size_current*=2
+            input_=int(input_/2)
+#             model += [Self_Attn(input_,)]
+#         input_=int(input_/2)
+        for i in range(n_upsampling-1):
+            model += [norm_layer(int(input_ )),nn.ReLU(True),nn.ConvTranspose2d(input_, int(input_ / 2),
+                                         kernel_size=3, stride=2,
+                                         padding=1, output_padding=1,
+                                         bias=use_bias),
+                      
+                      ] 
+            input_=int(input_/2)
+        model += [norm_layer(int(input_ )),nn.ReLU(True)]
+        model += [nn.ConvTranspose2d(input_, 3,
+                                         kernel_size=3, stride=1,
+                                         padding=1, output_padding=0,
+                                         bias=use_bias)]
+
+        model += [nn.Tanh()]
+        
+        self.model = nn.Sequential(*model)
+
+    def forward(self, input):
+        """Standard forward"""
+        return self.model(input)
+    
+    
     
 class Self_Attn(nn.Module):
     """ Self attention Layer"""
-    def __init__(self,in_dim,activation):
+    def __init__(self,in_dim,activation=nn.ReLU()):
         super(Self_Attn,self).__init__()
         self.chanel_in = in_dim
         self.activation = activation
@@ -803,34 +983,7 @@ class Reshape(nn.Module):
         self.shape = args
     def forward(self, x):
         return x.view(self.shape)      
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+ 
 if __name__ == "__main__":
     dtype=torch.cuda.FloatTensor
     encoder=ResnetEncoder_full(3,3,n_blocks=2,ngf=32)
