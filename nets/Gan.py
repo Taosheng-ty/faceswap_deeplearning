@@ -135,7 +135,7 @@ def run_a_cyclegan(G_A,D_A, G_B,D_B,G_solver, D_solver, discriminator_loss, gene
             set_requires_grad([G_A,G_B],True)
             set_requires_grad([D_A,D_B],False) 
             data={"real_A":real_A,"real_B":real_B,"D_A":D_A,"D_B":D_B,"G_A":G_A,"G_B":G_B}
-            data["edge"]=5e-5
+            data["edge"]=5e-4
             data["cnn"]=cnn
 
             loss_G=cyclegan_generator_loss(**data)
@@ -316,7 +316,7 @@ def cycle_gan(**data):
         encoder=ResnetEncoder_full(**data)
         decoder_A=ResnetDecoder_full(**data)
         decoder_B=ResnetDecoder_full(**data)
-        D_A=build_dc_classifier().type(dtype)
+        D_A=build_dc_classifier(**data).type(dtype)
         
     G_A = build_dc_generator(encoder,decoder_A).type(dtype)
     print("G_A graph")
@@ -328,7 +328,7 @@ def cycle_gan(**data):
     D_A.apply(initialize_weights)
     print("D_A graph")
     summary(D_A,input_size=(3,data["size"],data["size"]))
-    D_B=build_dc_classifier().type(dtype)
+    D_B=build_dc_classifier(**data).type(dtype)
     D_B.apply(initialize_weights)
     G_solver = torch.optim.Adam(itertools.chain(encoder.parameters(), decoder_A.parameters(), decoder_B.parameters()) ,lr=1e-3,betas=[0.5,0.999])
     D_solver = torch.optim.Adam(itertools.chain(D_B.parameters(), D_A.parameters()),lr=1e-3,betas=[0.5,0.999])
@@ -344,7 +344,7 @@ if __name__ == "__main__":
     parse=faceswapping_parser()
     print(parse)
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":2, "padding_type":'reflect',"size":64}
+    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":2, "padding_type":'reflect',"size":128}
     data["batch_size"]=4
     data["type"]=torch.cuda.FloatTensor
     data["shaoanlu"]=False
