@@ -114,7 +114,7 @@ def ls_generator_loss(scores_fake,dtype=torch.cuda.FloatTensor):
     
     return loss
 def edge_loss(img):
-    loss=0.0001*(((img[:,:,0:-1,:]-img[:,:,1:,:])**2).sum()+((img[:,:,:,0:-1]-img[:,:,:,1:])**2).sum())
+    loss=((img[:,:,0:-1,:]-img[:,:,1:,:])**2).sum()+((img[:,:,:,0:-1]-img[:,:,:,1:])**2).sum()
     return loss
 
 def extract_features(x, cnn):
