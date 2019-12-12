@@ -1,0 +1,7 @@
+{"GPU":0,
+ "batch_size":1,
+ "log":"../../logs/",
+ "size":64,
+"A_dire":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/rgb/",
+"B_dire":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
+"C_dire":"/home/taoyang/research/datasets/lfw/Ari_Fleischer/"}
