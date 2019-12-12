@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from PIL import ImageFile
 import os
+import json
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from datetime import datetime
 import sys
@@ -342,16 +343,18 @@ if __name__ == "__main__":
 #     log_dir=Logger(data["ckpt_path"]+"/")
 #     sys.stdout=log_dir
     parse=faceswapping_parser()
+    parse=parse.parse_args()
     print(parse)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    data={"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":2, "padding_type":'reflect',"size":128}
-    data["batch_size"]=4
+    data=json.load(open(parse.json_file))
+   
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(data["GPU"])
+    data.update({"input_nc":3, "output_nc":3, "ngf":128, "norm_layer":nn.BatchNorm2d, "use_dropout":False, "n_blocks":2, "padding_type":'reflect'})
+
     data["type"]=torch.cuda.FloatTensor
     data["shaoanlu"]=False
     date_a = datetime.now() 
     folder_name=str(date_a).replace(" ","-")
-    log_dir="../../logs/"+folder_name
-    data["ckpt_path"]=log_dir
+    log_dir=data["log"]+folder_name
     data["ckpt_path"]=log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -382,15 +385,15 @@ if __name__ == "__main__":
 
     # monet="/raid/taoyang/research/research_everyday/repository/pytorch-CycleGAN-and-pix2pix/datasets/monet2photo/trainA/"
     # photo="/raid/taoyang/research/research_everyday/repository/pytorch-CycleGAN-and-pix2pix/datasets/monet2photo/trainB/"
-    monet="/home/taoyang/research/research_everyday/faceswap-GAN/faceA/rgb/"
-    photo="/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/"
-    other="/home/taoyang/research/datasets/lfw/Ari_Fleischer/"
+    A=data["A_dire"]
+    B=data["B_dire"]
+    C=data["C_dire"]
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    content=cycle_data_withfolder(monet,data_transforms["train"],dtype)
-    other_=cycle_data_withfolder(other,data_transforms["train"],dtype)
-    style=cycle_data_withfolder(photo,data_transforms["train"],dtype)
+    A_=cycle_data_withfolder(A,data_transforms["train"],dtype)
+    B_=cycle_data_withfolder(B,data_transforms["train"],dtype)
+    C_=cycle_data_withfolder(C,data_transforms["train"],dtype)
 
-    loader_content = DataLoader(content,
+    loader_A = DataLoader(A_,
                         batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
@@ -398,12 +401,12 @@ if __name__ == "__main__":
     #                     batch_size=8,
     #                     num_workers=7,
     #                     shuffle=True)
-    other_Loader= DataLoader(other_,
+    loader_B= DataLoader(B_,
                         batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
     # style=cycle_data('styles/starry_night.jpg',data_transforms["train"])
-    loader_style = DataLoader(style,
+    loader_C = DataLoader(C_,
                         batch_size=data["batch_size"],
                         num_workers=7,
                         shuffle=True)
@@ -411,9 +414,9 @@ if __name__ == "__main__":
 
 #     data={}
     
-    data["A"]=loader_content
-    data["B"]=loader_style
-    data["C"]=other_Loader
+    data["A"]=loader_A
+    data["B"]=loader_B
+    data["C"]=loader_C
 #     date_a = datetime.now() 
 #     folder_name=str(date_a).replace(" ","-")
 #     log_dir="../../logs/"+folder_name
