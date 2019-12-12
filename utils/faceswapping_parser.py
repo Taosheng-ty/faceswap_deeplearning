@@ -2,7 +2,7 @@ import argparse
 class faceswapping_parser(argparse.ArgumentParser):
     def __init__(self,description=None):
         super(faceswapping_parser,self).__init__(description=description)
-        self._add('--json_file',default="",dest="json",help="this is json file to set arguments")
+        self._add('--json_file',default="",dest="json_file",help="this is json file to set arguments")
 
     def _add(self,*arg,**kwargs):
         super(faceswapping_parser,self).add_argument(*arg,**kwargs)
