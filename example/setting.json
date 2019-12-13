@@ -1,7 +1,18 @@
-{"GPU":0,
- "batch_size":1,
+{"GPU":1,
+ "batch_size":4,
  "log":"../../logs/",
  "size":64,
-"A_dire":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/rgb/",
-"B_dire":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
-"C_dire":"/home/taoyang/research/datasets/lfw/Ari_Fleischer/"}
+"rgb_A":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/rgb/",
+ "mask_A":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/binary_mask/",
+"rgb_B":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
+ "mask_B":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/binary_mask/",
+ "rgb_C":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
+"shaoanlu":1,
+ "fooling_loss_weights":10,
+"discriminator_loss_weight":1,
+ "reconstruction_loss_weights":100,
+"cycle_loss_weights":1,
+ "edge":0.0001,
+ "pl":0.1,
+ "maks":1
+}
