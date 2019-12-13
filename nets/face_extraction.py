@@ -7,7 +7,8 @@ from PIL import Image
 
 
 # Takes an image, detects any faces in the image, and returns a list of the 
-# isolated face images.
+# isolated face images. 
+# (With help from Karan Bhanot: https://towardsdatascience.com/extracting-faces-using-opencv-face-detection-neural-network-475c5cd0c260)
 #
 # Parameters:
 #   scene- a single png image file
