@@ -52,3 +52,27 @@ def face_extraction(scene, model):
       faces.append(frame)
 
   return faces
+
+
+## Example for how this function is called
+## Load paths to access models, also retrieve image file of scene.
+# base_dir = os.path.abspath('') + '/'
+# prototxt_path = os.path.join(base_dir + 'deploy.prototxt')
+# caffemodel_path = os.path.join(base_dir + 'weights.caffemodel')
+# image_path = base_dir + 'image/image.png'
+
+## Read the model
+# model = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+## Load image
+# frame = cv2.imread(image_path)
+# frame = imutils.resize(frame, width = 400, height = 200)
+
+## Call facial_extractor with the given frame and trained models
+# faces = facial_extractor(frame, model)
+
+## Save faces to directory to make sure it worked correctly
+# i = 0
+# for face in faces:
+  # cv2.imwrite(base_dir + 'faces/' + str(i) + '_' + file +'.png', face)
+  # i += 1
