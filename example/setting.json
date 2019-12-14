@@ -1,12 +1,12 @@
 {"GPU":1,
- "batch_size":4,
+ "batch_size":16,
  "log":"../../logs/",
  "size":64,
-"rgb_A":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/rgb/",
- "mask_A":"/home/taoyang/research/research_everyday/faceswap-GAN/faceA/binary_mask/",
-"rgb_B":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
- "mask_B":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/binary_mask/",
- "rgb_C":"/home/taoyang/research/research_everyday/faceswap-GAN/faceB/rgb/",
+"rgb_A":"data_sets/faceA/rgb/",
+ "mask_A":"data_sets/faceA/binary_mask/",
+"rgb_B":"data_sets/faceB/rgb/",
+ "mask_B":"data_sets/faceB/binary_mask/",
+ "rgb_C":"data_sets/faceB/rgb/",
 "shaoanlu":1,
  "fooling_loss_weights":10,
 "discriminator_loss_weight":1,
@@ -14,5 +14,11 @@
 "cycle_loss_weights":1,
  "edge":0.0001,
  "pl":0.1,
- "maks":1
+ "maks":1,
+ "show_picture":1,
+ "show_loss_fig":0,
+ "epoch":100,
+ "save_iter":500,
+ "maxium_iter":30000
+ 
 }
