@@ -8,6 +8,7 @@ import os
 import numpy as np
 from torchsummary import summary
 def set_requires_grad( nets, requires_grad=False):
+    ##adapted from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
         """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
         Parameters:
             nets (network list)   -- a list of networks
@@ -20,6 +21,7 @@ def set_requires_grad( nets, requires_grad=False):
                 for param in net.parameters():
                     param.requires_grad = requires_grad
 def initialize_weights(m):
+    ##adapted from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
     if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
         init.xavier_uniform_(m.weight.data)
 def get_optimizer(model):
@@ -38,6 +40,7 @@ def get_optimizer(model):
     return optimizer
 def run_a_gan(D, G, D_solver, G_solver, discriminator_loss, generator_loss, show_every=250, 
               batch_size=128, noise_size=96, num_epochs=10):
+    ##adapted from cs231n course code http://cs231n.github.io/
     """
     Train a GAN!
     
@@ -92,6 +95,7 @@ class Flatten(nn.Module):
         N, C, H, W = x.size() # read in N, C, H, W
         return x.view(N, -1)  # "flatten" the C * H * W values into a single vector per image
 def build_dc_classifier(**data):
+    ##adapted from cs231n course code http://cs231n.github.io/
     """
     Build and return a PyTorch model for the DCGAN discriminator implementing
     the architecture above.
@@ -944,6 +948,7 @@ class ResnetDecoder_shaoanlu(nn.Module):
     
     
 class Self_Attn(nn.Module):
+    ##adapted from 
     """ Self attention Layer"""
     def __init__(self,in_dim,activation=nn.ReLU()):
         super(Self_Attn,self).__init__()
