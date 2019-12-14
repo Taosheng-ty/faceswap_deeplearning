@@ -23,6 +23,7 @@ import sys
 sys.path.append("..")
 from utils import *
 def show_images(images):
+    ##adapted from cs231n course code http://cs231n.github.io/
     images = np.reshape(images, [images.shape[0], -1])  # images reshape to (batch_size, D)
     sqrtn = int(np.ceil(np.sqrt(images.shape[0])))
     sqrtimg = int(np.ceil(np.sqrt(images.shape[1])))
@@ -40,6 +41,7 @@ def show_images(images):
         plt.imshow(img.reshape([sqrtimg,sqrtimg]))
     return 
 def preprocess(img, size=512):
+    ##adapted from cs231n course code http://cs231n.github.io/
     transform = T.Compose([
         T.Resize(size),
         T.ToTensor(),
@@ -49,7 +51,7 @@ def preprocess(img, size=512):
     ])
     return transform(img)
 def deprocess(img):
-    
+    ##adapted from cs231n course code http://cs231n.github.io/
     transform = T.Compose([
         T.Normalize(mean=[0, 0, 0], std=[1.0 / s for s in [0.229, 0.224, 0.225]]),
         T.Normalize(mean=[-m for m in [0.485, 0.456, 0.406]], std=[1, 1, 1]),
@@ -58,6 +60,7 @@ def deprocess(img):
     ])
     return transform(img)
 def rescale(x):
+    ##adapted from cs231n course code http://cs231n.github.io/
     low, high = x.min(), x.max()
     x_rescaled = (x - low) / (high - low)
     return x_rescaled
@@ -108,6 +111,7 @@ def my_segmentation_transforms(image, segmentation,data):
         
     return image, segmentation
 def count_params(model):
+    ##adapted from cs231n course code http://cs231n.github.io/
     """Count the number of parameters in the current TensorFlow graph """
     param_count = np.sum([np.prod(p.size()) for p in model.parameters()])
     return param_count
